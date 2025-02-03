@@ -1,6 +1,6 @@
 const autoBind = require("auto-bind");
 
-class NotesHandler {
+class AlbumsHandler {
   constructor(service, validator) {
     this._service = service;
     this._validator = validator;
@@ -8,65 +8,55 @@ class NotesHandler {
     autoBind(this);
   }
 
-  async postNoteHandler(request, h) {
-    this._validator.validateNotePayload(request.payload);
-    const { title = "untitled", body, tags } = request.payload;
+  async postAlbumHandler(request, h) {
+    this._validator.validateAlbumPayload(request.payload);
+    const { name, year } = request.payload;
 
-    const noteId = await this._service.addNote({ title, body, tags });
+    const albumId = await this._service.addAlbum({ name, year });
 
     const response = h.response({
       status: "success",
-      message: "Catatan berhasil ditambahkan",
+      message: "Album berhasil ditambahkan",
       data: {
-        noteId,
+        albumId,
       },
     });
     response.code(201);
     return response;
   }
 
-  async getNotesHandler() {
-    const notes = await this._service.getNotes();
+  async getAlbumByIdHandler(request) {
+    const { id } = request.params;
+    const album = await this._service.getAlbumById(id);
     return {
       status: "success",
       data: {
-        notes,
+        album,
       },
     };
   }
 
-  async getNoteByIdHandler(request, h) {
+  async putAlbumByIdHandler(request) {
+    this._validator.validateAlbumPayload(request.payload);
     const { id } = request.params;
-    const note = await this._service.getNoteById(id);
+
+    await this._service.editAlbumById(id, request.payload);
+
     return {
       status: "success",
-      data: {
-        note,
-      },
+      message: "Album berhasil diperbarui",
     };
   }
 
-  async putNoteByIdHandler(request, h) {
-    this._validator.validateNotePayload(request.payload);
+  async deleteAlbumByIdHandler(request) {
     const { id } = request.params;
-
-    await this._service.editNoteById(id, request.payload);
+    await this._service.deleteAlbumById(id);
 
     return {
       status: "success",
-      message: "Catatan berhasil diperbarui",
-    };
-  }
-
-  async deleteNoteByIdHandler(request, h) {
-    const { id } = request.params;
-    await this._service.deleteNoteById(id);
-
-    return {
-      status: "success",
-      message: "Catatan berhasil dihapus",
+      message: "Album berhasil dihapus",
     };
   }
 }
 
-module.exports = NotesHandler;
+module.exports = AlbumsHandler;
