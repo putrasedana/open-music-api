@@ -12,11 +12,10 @@ class PlaylistsHandler {
     this._validator.validatePlaylistPayload(request.payload);
 
     const { name } = request.payload;
-    console.log("Received name:", name);
 
     const { id: owner } = request.auth.credentials;
 
-    const playlistId = await this._service.addPlaylist({ name }, owner);
+    const playlistId = await this._service.addPlaylist(name, owner);
 
     return h
       .response({
@@ -54,16 +53,15 @@ class PlaylistsHandler {
   }
 
   async postSongToPlaylistHandler(request, h) {
-    console.debug(request.payload);
     this._validator.validateSongToPlaylist(request.payload);
 
     const { id: playlistId } = request.params;
     const { songId } = request.payload;
-    const { id: owner } = request.auth.credentials;
+    const { id: userId } = request.auth.credentials;
 
-    await this._service.verifyPlaylistOwner(playlistId, owner);
+    await this._service.verifyPlaylistAccess(playlistId, userId);
 
-    await this._service.addSongToPlaylist(playlistId, songId);
+    await this._service.addSongToPlaylist(playlistId, songId, userId);
 
     return h
       .response({
@@ -94,14 +92,35 @@ class PlaylistsHandler {
 
     const { id: playlistId } = request.params;
     const { songId } = request.payload;
-    const { id: ownerId } = request.auth.credentials;
+    const { id: userId } = request.auth.credentials;
 
-    await this._service.deleteSongFromPlaylist(playlistId, songId, ownerId);
+    await this._service.verifyPlaylistAccess(playlistId, userId);
+
+    await this._service.deleteSongFromPlaylist(playlistId, songId, userId);
 
     return h
       .response({
         status: "success",
         message: "Lagu berhasil dihapus dari playlist",
+      })
+      .code(200);
+  }
+
+  async getPlaylistActivitiesHandler(request, h) {
+    const { id: playlistId } = request.params;
+    const { id: userId } = request.auth.credentials;
+
+    await this._service.verifyPlaylistAccess(playlistId, userId);
+
+    const activities = await this._service.getPlaylistActivities(playlistId);
+
+    return h
+      .response({
+        status: "success",
+        data: {
+          playlistId,
+          activities,
+        },
       })
       .code(200);
   }
