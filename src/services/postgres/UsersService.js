@@ -11,8 +11,6 @@ class UsersService {
   }
 
   async addUser({ username, password, fullname }) {
-    console.log(username);
-
     await this.verifyNewUsername(username);
 
     const id = `user-${nanoid(16)}`;

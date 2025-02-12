@@ -16,13 +16,15 @@
   "dependencies": {
     "@hapi/hapi": "^21.3.2",
     "@hapi/jwt": "^3.2.0",
+    "amqplib": "^0.10.5",
     "auto-bind": "^4.0.0",
     "bcrypt": "^5.1.1",
     "dotenv": "^16.4.7",
     "joi": "^17.11.0",
     "nanoid": "^3.1.20",
     "node-pg-migrate": "^7.9.0",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "redis": "^4.7.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.19.0",

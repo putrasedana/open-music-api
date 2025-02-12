@@ -2,6 +2,7 @@ require("dotenv").config();
 
 const Hapi = require("@hapi/hapi");
 const Jwt = require("@hapi/jwt");
+const path = require("path");
 
 const ClientError = require("./exceptions/ClientError");
 
@@ -29,18 +30,33 @@ const PlaylistsValidator = require("./validator/playlists");
 const CollaborationsService = require("./services/postgres/CollaborationsService");
 const collaborations = require("./api/collaborations");
 const CollaborationsValidator = require("./validator/collaborations");
+const config = require("./utils/config");
+
+const _exports = require("./api/exports");
+const ProducerService = require("./services/rabbitmq/ProducerService");
+const ExportsValidator = require("./validator/exports");
+
+const uploads = require("./api/uploads");
+const StorageService = require("./services/storage/StorageService");
+const UploadsValidator = require("./validator/uploads");
+
+const CacheService = require("./services/redis/CacheService");
 
 const init = async () => {
-  const albumsService = new AlbumsService();
+  const cacheService = new CacheService();
+  const albumsService = new AlbumsService(cacheService);
   const songsService = new SongsService();
   const usersService = new UsersService();
   const authenticationsService = new AuthenticationsService();
   const collaborationsService = new CollaborationsService();
   const playlistsService = new PlaylistsService(collaborationsService);
+  const storageService = new StorageService(
+    path.resolve(__dirname, "api/uploads/file/images")
+  );
 
   const server = Hapi.server({
-    port: process.env.PORT,
-    host: process.env.HOST,
+    port: config.app.port,
+    host: config.app.host,
     routes: {
       cors: {
         origin: ["*"],
@@ -116,38 +132,50 @@ const init = async () => {
         validator: CollaborationsValidator,
       },
     },
+    {
+      plugin: _exports,
+      options: {
+        ProducerService,
+        playlistsService,
+        validator: ExportsValidator,
+      },
+    },
+    {
+      plugin: uploads,
+      options: {
+        service: storageService,
+        validator: UploadsValidator,
+        albumsService,
+      },
+    },
   ]);
 
   server.ext("onPreResponse", (request, h) => {
     const { response } = request;
 
     if (response instanceof Error) {
-      console.error("🚨 Error caught in onPreResponse:", response);
-
       if (response instanceof ClientError) {
-        return h
-          .response({
-            status: "fail",
-            message: response.message,
-          })
-          .code(response.statusCode);
+        const newResponse = h.response({
+          status: "fail",
+          message: response.message,
+        });
+        newResponse.code(response.statusCode);
+        return newResponse;
       }
 
-      if (response.isBoom) {
-        return h
-          .response({
-            status: "fail",
-            message: response.message,
-          })
-          .code(response.output.statusCode);
+      if (!response.isServer) {
+        return h.continue;
       }
 
-      return h
-        .response({
-          status: "error",
-          message: "Terjadi kegagalan pada server kami",
-        })
-        .code(500);
+      // 🔥 Tambahkan logging error di sini 🔥
+      console.error("🚨 Internal Server Error:", response);
+
+      const newResponse = h.response({
+        status: "error",
+        message: "terjadi kegagalan pada server kami",
+      });
+      newResponse.code(500);
+      return newResponse;
     }
 
     return h.continue;
