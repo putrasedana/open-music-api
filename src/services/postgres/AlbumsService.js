@@ -2,6 +2,7 @@ const { nanoid } = require("nanoid");
 const { Pool } = require("pg");
 const InvariantError = require("../../exceptions/InvariantError");
 const NotFoundError = require("../../exceptions/NotFoundError");
+const config = require("../../utils/config");
 
 class AlbumsService {
   constructor(cacheService) {
@@ -50,9 +51,7 @@ class AlbumsService {
       id: album.id,
       name: album.name,
       year: album.year,
-      coverUrl: album.cover
-        ? `http://${process.env.HOST}:${process.env.PORT}/upload/images/${album.cover}`
-        : null,
+      coverUrl: album.cover,
       songs: songsResult.rows,
     };
   }
@@ -136,6 +135,8 @@ class AlbumsService {
       const result = await this._cacheService.get(`albums:${albumId}`);
       return { likes: parseInt(result, 10), fromCache: true };
     } catch (error) {
+      console.error("Cache error:", error);
+
       const query = {
         text: "SELECT COUNT(*) FROM user_album_likes WHERE album_id = $1",
         values: [albumId],
