@@ -171,7 +171,6 @@ const init = async () => {
         return h.continue;
       }
 
-      // 🔥 Tambahkan logging error di sini 🔥
       console.error("🚨 Internal Server Error:", response);
 
       const newResponse = h.response({
